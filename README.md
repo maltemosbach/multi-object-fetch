@@ -4,11 +4,11 @@ Visual RL environments for multi-object reasoning and manipulation with a Fetch 
 The following table shows examples of the different environments (Reach, Push, and Pick) as well as the relational
 reasoning tasks (Red, Reddest, Odd, OddGroups).
 
-|           |                           Red                            |                           Reddest                            |                           Odd                            |                           OddGroups                            |
-|:----------|:--------------------------------------------------------:|:------------------------------------------------------------:|:--------------------------------------------------------:|:--------------------------------------------------------------:|
-| **Reach** | <img style="width: 22%;" src="docs/images/ReachRed.png"> | <img style="width: 22%;" src="docs/images/ReachReddest.png"> | <img style="width: 22%;" src="docs/images/ReachOdd.png"> | <img style="width: 22%;" src="docs/images/ReachOddGroups.png"> |
-| **Push**  | <img style="width: 22%;" src="docs/images/PushRed.png">  | <img style="width: 22%;" src="docs/images/PushReddest.png">  | <img style="width: 22%;" src="docs/images/PushOdd.png">  | <img style="width: 22%;" src="docs/images/PushOddGroups.png">  |
-| **Pick**  | <img style="width: 22%;" src="docs/images/PickRed.png">  | <img style="width: 22%;" src="docs/images/PickReddest.png">  | <img style="width: 22%;" src="docs/images/PickOdd.png">  | <img style="width: 22%;" src="docs/images/PickOddGroups.png">  |
+|           |                             Red                             |                            Reddest                             |                           Odd                            |                           OddGroups                            |
+|:----------|:-----------------------------------------------------------:|:--------------------------------------------------------------:|:--------------------------------------------------------:|:--------------------------------------------------------------:|
+| **Reach** | <img style="width: 128px;" src="docs/images/ReachRed.png">  | <img style="width: 128px;" src="docs/images/ReachReddest.png"> | <img style="width: 128px;" src="docs/images/ReachOdd.png"> | <img style="width: 128px;" src="docs/images/ReachOddGroups.png"> |
+| **Push**  |  <img style="width: 128px;" src="docs/images/PushRed.png">  |  <img style="width: 128px;" src="docs/images/PushReddest.png">   | <img style="width: 128px;" src="docs/images/PushOdd.png">  | <img style="width: 128px;" src="docs/images/PushOddGroups.png">  |
+| **Pick**  |  <img style="width: 128px;" src="docs/images/PickRed.png">  |  <img style="width: 128px;" src="docs/images/PickReddest.png">   | <img style="width: 128px;" src="docs/images/PickOdd.png">  | <img style="width: 128px;" src="docs/images/PickOddGroups.png">  |
 
 ## Installation
 The easiest way to install is to use the provided `create_conda_env.sh` script. This creates a conda environment called `mof` with all the necessary dependencies, sets up MuJoCo and copies asset files.
