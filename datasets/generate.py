@@ -1,13 +1,11 @@
 import gym
+import multi_object_fetch
+from multi_object_fetch.utils.parser import MOFParser
 import numpy as np
 import os.path
 from PIL import Image
 import shutil
 import tqdm
-
-
-import multi_object_fetch
-from multi_object_fetch.utils.parser import MOFParser
 
 
 def save_episode(path: str, env: gym.Env, width: int, height: int, action_repeat: int = 1) -> None:
@@ -52,7 +50,7 @@ if __name__ == "__main__":
         shutil.rmtree(args.dataset_dir)
     os.mkdir(args.dataset_dir)
 
-    min_distractors, max_distractors = 4, 4
+    min_distractors, max_distractors = 0, 4
     if args.task.startswith("Odd"):
         min_distractors = 2
         if args.task == "OddGroups":
