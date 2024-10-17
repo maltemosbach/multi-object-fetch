@@ -9,3 +9,4 @@ class MOFParser(argparse.ArgumentParser):
                           help="The task to run.")
         self.add_argument("--num_distractors", type=int, default=2,
                           help="The number of distractors in the environment. Must be between 0 and 10.")
+        self.add_argument("--reward_type", type=str, choices=["Sparse", "Dense"], default="Dense",)

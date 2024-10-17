@@ -1,11 +1,9 @@
 import gym
-import numpy as np
 from tabulate import tabulate
 import tqdm
 import multi_object_fetch
 from multi_object_fetch.utils.gui import GUI
 from multi_object_fetch.utils.parser import MOFParser
-import cv2
 
 
 # Parse environment arguments.
@@ -13,7 +11,7 @@ parser = MOFParser()
 parser.add_argument("--policy", type=str, choices=["random", "user"], default="random",
                     help="The policy used to control the robot. 'user' for interactive keyboard control, and 'random' for a random policy.")
 args = parser.parse_args()
-env = gym.make(f'{args.environment}{args.task}_{args.num_distractors}Distractors_Dense-v1')
+env = gym.make(f'{args.environment}{args.task}_{args.num_distractors}Distractors_{args.reward_type}-v1')
 env.render(mode='rgb_array')
 
 gui = GUI(fps=env.metadata['video.frames_per_second'])

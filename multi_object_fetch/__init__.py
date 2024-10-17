@@ -1,14 +1,10 @@
-import logging
 from gym.envs.registration import register
-
-
-logger = logging.getLogger(__name__)
 
 
 for environment in ['Reach', 'Push', 'Pick']:
     for task in ['Red', 'Reddest', 'Odd', 'OddGroups']:
         for num_distractors in range(0, 5):
-            for reward_type in ['sparse', 'dense']:
+            for reward_type in ['Sparse', 'Dense']:
                 if task.startswith('Odd') and num_distractors < 2:  # Odd-one-out needs at least two others.
                     continue
                 if task == 'OddGroups' and num_distractors < 4:  # Odd with groups needs at least 2 x 2 others.
@@ -38,7 +34,7 @@ for environment in ['Reach', 'Push', 'Pick']:
 
 
                 register(
-                    id=f'{environment}{task}_{num_distractors}Distractors_{reward_type.capitalize()}-v1',
+                    id=f'{environment}{task}_{num_distractors}Distractors_{reward_type}-v1',
                     entry_point='multi_object_fetch.env:ReachEnv' if environment == 'Reach' else 'multi_object_fetch.env:ManipulateEnv',
                     kwargs=kwargs,
                     max_episode_steps=50 if environment == 'Reach' else 100,

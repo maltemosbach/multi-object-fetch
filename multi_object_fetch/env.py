@@ -103,6 +103,7 @@ class ColorsMixin(ABC):
         red_lab = convert_color(red, LabColor)
         return self.delta_e_cie2000(red_lab, color_lab)
 
+
 class MultiObjectFetchEnv(fetch_env.FetchEnv, gym_utils.EzPickle, ColorsMixin, ABC):
     def __init__(self, initial_qpos: Dict[str, Any], obs_type: str = "dictstate", object_size: float = 0.045,
                  target_size: float = 0.04, robot_configuration: str = "default", viewpoint: str = "frontview") -> None:
@@ -154,7 +155,7 @@ class ReachEnv(MultiObjectFetchEnv):
 
     def __init__(self, initial_qpos: Dict[str, Any], obs_type: str = "dictstate", object_size: float = 0.045,
                  target_size: float = 0.04, robot_configuration: str = "default", viewpoint: str = "frontview",
-                 num_distractors: int = 1, reward_type: str = "dense", task: str = "Red", width: int = 512,
+                 num_distractors: int = 1, reward_type: str = "Dense", task: str = "Red", width: int = 512,
                  height: int = 512) -> None:
         super().__init__(initial_qpos, obs_type, object_size, target_size, robot_configuration, viewpoint)
         self.num_distractors = num_distractors
@@ -268,21 +269,12 @@ class ReachEnv(MultiObjectFetchEnv):
         obs = self._get_obs()
         return obs
 
-    def check_distractor_dist(self):
-        grip_pos = self.sim.data.get_site_xpos('robot0:grip')
-
-        for i in range(self.num_distractors):
-            if np.linalg.norm(
-                    grip_pos.copy() - self.sim.data.get_site_xpos(f'distractor{i}').copy()) <= self.distance_threshold:
-                return -1
-
-        return 0
-
     def compute_reward(self, achieved_goal, goal, info):
-        if self.reward_type == 'sparse':
+        if self.reward_type == 'Sparse':
             return -np.array(not self.success()).astype(np.float32)
         else:
-            goal_dist = -super().compute_reward(achieved_goal, goal, info)
+            grip_pos = self.sim.data.get_site_xpos('robot0:grip')
+            goal_dist = np.linalg.norm(grip_pos.copy() - self.sim.data.get_site_xpos(f'target0').copy())
             return np.exp(-20 * goal_dist)
 
     def success(self):
@@ -294,7 +286,7 @@ class ReachEnv(MultiObjectFetchEnv):
 class ManipulateEnv(MultiObjectFetchEnv):
     def __init__(self, initial_qpos: Dict[str, Any], obs_type: str = "dictstate", object_size: float = 0.045,
                  target_size: float = 0.04, robot_configuration: str = "default", viewpoint: str = "frontview",
-                 num_distractors: int = 1, reward_type: str = "dense", task: str = "Red", width: int = 512,
+                 num_distractors: int = 1, reward_type: str = "Dense", task: str = "Red", width: int = 512,
                  height: int = 512, target_in_the_air=True, block_gripper=False) -> None:
         super().__init__(initial_qpos, obs_type, object_size, target_size, robot_configuration, viewpoint)
         self.num_distractors = num_distractors
@@ -317,7 +309,6 @@ class ManipulateEnv(MultiObjectFetchEnv):
                                     viewpoint, num_distractors, reward_type, task, width, height, target_in_the_air,
                                     block_gripper)
         os.remove(MODEL_XML_PATH)
-
 
     def _reset_sim(self):
         self.sim.set_state(self.initial_state)
@@ -370,26 +361,38 @@ class ManipulateEnv(MultiObjectFetchEnv):
         else:
             raise ValueError("Invalid task: {}".format(self.task))
 
-
         # Randomize start position of objects.
         prev_obj_xpos = []
 
-        for obj_name in self.object_names:
-            object_xypos = self.initial_gripper_xpos[:2] + self.np_random.uniform(-self.obj_range, self.obj_range,
-                                                                                  size=2)
+        valid_configuration = False
+        failed_attempts = 0
+        while not valid_configuration:
+            for obj_name in self.object_names:
+                for block_attempt in range(0, 100):
+                    object_xypos = self.initial_gripper_xpos[:2] + self.np_random.uniform(-self.obj_range, self.obj_range, size=2)
+                    if np.all([np.linalg.norm(object_xypos - other_xpos) >= 2 * np.sqrt(2) * self.object_size for other_xpos in prev_obj_xpos]):
+                        break
 
-            while not np.all([np.linalg.norm(object_xypos - other_xpos) >= 2 * np.sqrt(2) * self.object_size for other_xpos in prev_obj_xpos]):
-                object_xypos = self.initial_gripper_xpos[:2] + self.np_random.uniform(-self.obj_range, self.obj_range,
-                                                                                      size=2)
+                if not np.all([np.linalg.norm(object_xypos - other_xpos) >= 2 * np.sqrt(2) * self.object_size for other_xpos in prev_obj_xpos]):
+                    failed_attempts += 1
+                    if failed_attempts > 100:
+                        raise ValueError("Failed to find a valid configuration after 100 attempts.")
+                    prev_obj_xpos.clear()
+                    break
+                else:
+                    # If a valid configuration has been found for the last object.
+                    failed_attempts = 0
+                    if len(prev_obj_xpos) == len(self.object_names) - 1:
+                        valid_configuration = True
 
-            prev_obj_xpos.append(object_xypos)
+                prev_obj_xpos.append(object_xypos)
 
-            object_qpos = self.sim.data.get_joint_qpos(F"{obj_name}:joint")
-            assert object_qpos.shape == (7,)
-            object_qpos[:2] = object_xypos
-            object_qpos[2] = self.height_offset
-            self.sim.data.set_joint_qpos(F"{obj_name}:joint", object_qpos)
-            self.sim.forward()
+                object_qpos = self.sim.data.get_joint_qpos(F"{obj_name}:joint")
+                assert object_qpos.shape == (7,)
+                object_qpos[:2] = object_xypos
+                object_qpos[2] = self.height_offset
+                self.sim.data.set_joint_qpos(F"{obj_name}:joint", object_qpos)
+                self.sim.forward()
         return True
 
     def _sample_goal(self):
@@ -404,7 +407,7 @@ class ManipulateEnv(MultiObjectFetchEnv):
         return goal.copy()
 
     def compute_reward(self, achieved_goal, goal, info):
-        if self.reward_type == 'sparse':
+        if self.reward_type == 'Sparse':
             return -np.array(not self.success()).astype(np.float32)
         else:
             grip_dist = np.linalg.norm(np.squeeze(self.sim.data.get_site_xpos('object0')).copy() - np.squeeze(self.sim.data.get_site_xpos('robot0:grip')).copy())
