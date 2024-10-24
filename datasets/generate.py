@@ -24,11 +24,10 @@ def save_episode(path: str, env: gym.Env, width: int, height: int, action_repeat
                 break
             _, reward, done, _ = env.step(action)
 
-        if not done:
-            step_count += 1
-            save_image()
-            actions.append(action)
-            rewards.append(reward)
+        step_count += 1
+        save_image()
+        actions.append(action)
+        rewards.append(reward)
 
     np.save(os.path.join(path, 'actions.npy'), actions)
     np.save(os.path.join(path, 'rewards.npy'), rewards)
