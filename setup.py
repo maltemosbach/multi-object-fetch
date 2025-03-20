@@ -7,7 +7,6 @@ setup(
         packages=find_packages(),
         install_requires=[
             "cython<3",
-            "fetch-block-construction",
             "gym<=0.17.3",
             "mujoco-py", 
             "opencv-python",
