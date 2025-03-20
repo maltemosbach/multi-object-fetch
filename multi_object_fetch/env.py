@@ -15,6 +15,13 @@ from mujoco_py.generated import const
 from mujoco_py.modder import TextureModder
 from colormath.color_objects import sRGBColor, LabColor
 from colormath.color_conversions import convert_color
+import shutil
+
+
+fetch_assets_src = pkg_resources.resource_filename(
+    'fetch_block_construction', 'envs/robotics/assets'
+)
+cache_dir = os.path.join(os.path.expanduser("~"), ".cache/multi_object_fetch")
 
 
 class ColorsMixin(ABC):
@@ -189,10 +196,11 @@ class ReachEnv(MultiObjectFetchEnv):
         self.width = width
         self.height = height
 
-        cache_dir = os.path.expanduser("~/.cache/multi_object_fetch")
-        os.makedirs(cache_dir, exist_ok=True)
+        if not os.path.isdir(os.path.join(cache_dir, 'fetch')):
+            os.makedirs(cache_dir, exist_ok=True)
+            shutil.copytree(fetch_assets_src, cache_dir, dirs_exist_ok=True)
 
-        with tempfile.NamedTemporaryFile(mode='wt', dir=cache_dir, delete=False, suffix=".xml") as fp:
+        with tempfile.NamedTemporaryFile(mode='wt', dir=os.path.join(cache_dir, 'fetch'), delete=False, suffix=".xml") as fp:
             fp.write(generate_multi_camera_xml(num_distractors, self.robot, task='reach', target_size=target_size))
             MODEL_XML_PATH = fp.name
 
@@ -323,13 +331,13 @@ class ManipulateEnv(MultiObjectFetchEnv):
         self.task = task
         self.width = width
         self.height = height
+        
+        if not os.path.isdir(os.path.join(cache_dir, 'fetch')):
+            os.makedirs(cache_dir, exist_ok=True)
+            shutil.copytree(fetch_assets_src, cache_dir, dirs_exist_ok=True)
 
-        cache_dir = os.path.expanduser("~/.cache/multi_object_fetch")
-        os.makedirs(cache_dir, exist_ok=True)
-
-
-        with tempfile.NamedTemporaryFile(mode='wt', dir=cache_dir, delete=False, suffix=".xml") as fp:
-            fp.write(generate_multi_camera_xml(self.num_blocks, self.robot, task='pick_place', target_size=target_size, object_size=object_size))
+        with tempfile.NamedTemporaryFile(mode='wt', dir=os.path.join(cache_dir, 'fetch'), delete=False, suffix=".xml") as fp:
+            fp.write(generate_multi_camera_xml(num_distractors, self.robot, task='reach', target_size=target_size))
             MODEL_XML_PATH = fp.name
 
         fetch_env.FetchEnv.__init__(
