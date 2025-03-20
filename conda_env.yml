@@ -9,7 +9,7 @@ dependencies:
     - argparse
     - colormath
     - cython<3
-    - -e git+https://github.com/EwertzJN/fetch-block-construction.git@master#egg=fetch_block_construction
+    - git+https://github.com/EwertzJN/fetch-block-construction.git@master#egg=fetch_block_construction
     - gym<=0.17.3
     - mujoco-py 
     - opencv-python
