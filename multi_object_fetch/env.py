@@ -1,6 +1,7 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 import random
 
+import gym
 import numpy as np
 from fetch_block_construction.envs.robotics.fetch.construction import FetchBlockConstructionEnv
 from fetch_block_construction.envs.robotics import fetch_env
@@ -11,6 +12,7 @@ import tempfile
 from typing import Dict, Any
 from multi_object_fetch.assets.generate_multi_camera_xml import generate_multi_camera_xml
 from mujoco_py.generated import const
+from mujoco_py.modder import TextureModder
 from colormath.color_objects import sRGBColor, LabColor
 from colormath.color_conversions import convert_color
 
@@ -106,7 +108,8 @@ class ColorsMixin(ABC):
 
 class MultiObjectFetchEnv(fetch_env.FetchEnv, gym_utils.EzPickle, ColorsMixin, ABC):
     def __init__(self, initial_qpos: Dict[str, Any], obs_type: str = "dictstate", object_size: float = 0.045,
-                 target_size: float = 0.04, robot_configuration: str = "default", viewpoint: str = "frontview") -> None:
+                 target_size: float = 0.04, robot_configuration: str = "default", viewpoint: str = "frontview",
+                 randomize_background_color: bool = False, randomize_table_color: bool = False) -> None:
         """Initializes a new multi-object Fetch environment.
 
         Args:
@@ -121,6 +124,8 @@ class MultiObjectFetchEnv(fetch_env.FetchEnv, gym_utils.EzPickle, ColorsMixin, A
         self.target_size = target_size
         self.robot = robot_configuration
         self.viewpoint = viewpoint
+        self.randomize_background_color = randomize_background_color
+        self.randomize_table_color = randomize_table_color
 
     def render(self, mode='human', size=None):
         self._render_callback()
@@ -148,7 +153,28 @@ class MultiObjectFetchEnv(fetch_env.FetchEnv, gym_utils.EzPickle, ColorsMixin, A
             return (ids[::-1, :] + 1).astype(np.uint8)
         else:
             # original image is upside-down, so flip it
-            return self.sim.render(size[0], size[1], camera_name=self.viewpoint)[::-1, :, :]
+            return self.sim.render(size[0], size[1], camera_name=self.viewpoint)[::-1, :, :].copy()
+
+    @abstractmethod
+    def success(self) -> bool:
+        pass
+
+    def step(self, action):
+        obs, reward, done, info = super().step(action)
+        info["success"] = self.success()
+        return obs, reward, done, info
+
+    def _reset_sim(self):
+        self.sim.set_state(self.initial_state)
+
+        if self.randomize_table_color:
+            table_color = np.random.uniform(0, 1, size=3)
+            self.sim.model.geom_rgba[self.sim.model.geom_name2id('table0')][:3] = table_color
+
+        if self.randomize_background_color:
+            if not hasattr(self, "texture_modder"):
+                self.texture_modder = TextureModder(self.sim)
+            self.texture_modder.rand_noise('skybox')
 
 
 class ReachEnv(MultiObjectFetchEnv):
@@ -163,8 +189,10 @@ class ReachEnv(MultiObjectFetchEnv):
         self.width = width
         self.height = height
 
-        with tempfile.NamedTemporaryFile(mode='wt', dir=pkg_resources.resource_filename(
-                'fetch_block_construction', 'envs/robotics/assets/fetch'), delete=False, suffix=".xml") as fp:
+        cache_dir = os.path.expanduser("~/.cache/multi_object_fetch")
+        os.makedirs(cache_dir, exist_ok=True)
+
+        with tempfile.NamedTemporaryFile(mode='wt', dir=cache_dir, delete=False, suffix=".xml") as fp:
             fp.write(generate_multi_camera_xml(num_distractors, self.robot, task='reach', target_size=target_size))
             MODEL_XML_PATH = fp.name
 
@@ -192,7 +220,7 @@ class ReachEnv(MultiObjectFetchEnv):
         self.table_size = self.sim.model.geom_size[self.sim.model.geom_name2id('table0')]
 
     def _reset_sim(self):
-        self.sim.set_state(self.initial_state)
+        super()._reset_sim()
 
         if self.task == 'Odd':
             colors = self.np_random.choice(range(len(self.colors)), size=2, replace=False)
@@ -296,7 +324,11 @@ class ManipulateEnv(MultiObjectFetchEnv):
         self.width = width
         self.height = height
 
-        with tempfile.NamedTemporaryFile(mode='wt', dir=pkg_resources.resource_filename('fetch_block_construction', 'envs/robotics/assets/fetch'), delete=False, suffix=".xml") as fp:
+        cache_dir = os.path.expanduser("~/.cache/multi_object_fetch")
+        os.makedirs(cache_dir, exist_ok=True)
+
+
+        with tempfile.NamedTemporaryFile(mode='wt', dir=cache_dir, delete=False, suffix=".xml") as fp:
             fp.write(generate_multi_camera_xml(self.num_blocks, self.robot, task='pick_place', target_size=target_size, object_size=object_size))
             MODEL_XML_PATH = fp.name
 
@@ -311,7 +343,7 @@ class ManipulateEnv(MultiObjectFetchEnv):
         os.remove(MODEL_XML_PATH)
 
     def _reset_sim(self):
-        self.sim.set_state(self.initial_state)
+        super()._reset_sim()
 
         # Randomize color of objects
         if self.task == 'Odd':
