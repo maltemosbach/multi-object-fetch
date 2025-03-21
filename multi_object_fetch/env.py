@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 import random
-
+import os
 import gym
 import numpy as np
 from fetch_block_construction.envs.robotics.fetch.construction import FetchBlockConstructionEnv
@@ -18,14 +18,13 @@ from pathlib import Path
 from importlib.resources import files
 
 
-def prepare_fetch_assets():
+def prepare_fetch_assets() -> Path:
     cache_dir = Path.home() / ".cache" / "multi_object_fetch"
-    fetch_cache = cache_dir / "fetch"
     fetch_assets_src = files("fetch_block_construction.envs.robotics") / "assets"
-    if not fetch_cache.is_dir():
-        fetch_cache.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copytree(fetch_assets_src, fetch_cache, dirs_exist_ok=True)
-    return fetch_cache
+    if not (cache_dir / "fetch").is_dir():
+        cache_dir.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(fetch_assets_src, cache_dir, dirs_exist_ok=True)
+    return cache_dir
 
 
 class ColorsMixin(ABC):
@@ -201,18 +200,21 @@ class ReachEnv(MultiObjectFetchEnv):
         self.height = height
 
         fetch_cache = prepare_fetch_assets()
-        with tempfile.NamedTemporaryFile(mode='wt', dir=fetch_cache, delete=True, suffix=".xml") as fp:
+        with tempfile.NamedTemporaryFile(mode='wt', dir=fetch_cache / "fetch", delete=False, suffix=".xml") as fp:
             fp.write(generate_multi_camera_xml(num_distractors, self.robot, task='reach', target_size=target_size))
             MODEL_XML_PATH = fp.name
 
-            fetch_env.FetchEnv.__init__(
-                self, MODEL_XML_PATH, has_object=False, block_gripper=True, n_substeps=20,
-                gripper_extra_height=0.2, target_in_the_air=False, target_offset=0, obj_range=0, target_range=0,
-                distance_threshold=target_size + 0.015, initial_qpos=initial_qpos, reward_type=reward_type,
-                obs_type=obs_type, render_size=0)
+        fetch_env.FetchEnv.__init__(
+            self, MODEL_XML_PATH, has_object=False, block_gripper=True, n_substeps=20,
+            gripper_extra_height=0.2, target_in_the_air=False, target_offset=0, obj_range=0, target_range=0,
+            distance_threshold=target_size + 0.015, initial_qpos=initial_qpos, reward_type=reward_type,
+            obs_type=obs_type, render_size=0)
 
-            gym_utils.EzPickle.__init__(self, initial_qpos, obs_type, object_size, target_size, robot_configuration,
-                                        viewpoint, num_distractors, reward_type, task, width, height)
+        gym_utils.EzPickle.__init__(self, initial_qpos, obs_type, object_size, target_size, robot_configuration,
+                                    viewpoint, num_distractors, reward_type, task, width, height)
+        os.remove(MODEL_XML_PATH)
+
+
 
     def sample_pos(self, object_size):
         pos = self.initial_gripper_xpos[:3] + self.np_random.uniform(-0.15, 0.15, size=3)
@@ -332,18 +334,21 @@ class ManipulateEnv(MultiObjectFetchEnv):
         self.width = width
         self.height = height
 
+    
         fetch_cache = prepare_fetch_assets()
-        with tempfile.NamedTemporaryFile(mode='wt', dir=fetch_cache, delete=True, suffix=".xml") as fp:
-            fp.write(generate_multi_camera_xml(num_distractors, self.robot, task='reach', target_size=target_size))
+        with tempfile.NamedTemporaryFile(mode='wt', dir=fetch_cache / "fetch", delete=False, suffix=".xml") as fp:
+            fp.write(generate_multi_camera_xml(self.num_blocks, self.robot, task='pick_place', target_size=target_size, object_size=object_size))
             MODEL_XML_PATH = fp.name
-            fetch_env.FetchEnv.__init__(
-                self, MODEL_XML_PATH, has_object=True, block_gripper=block_gripper, n_substeps=20,
-                gripper_extra_height=0.2, target_in_the_air=target_in_the_air, target_offset=0.0,
-                obj_range=0.15, target_range=0.15, distance_threshold=self.target_size + self.object_size,
-                initial_qpos=initial_qpos, reward_type=reward_type, obs_type=obs_type, render_size=0)
-            gym_utils.EzPickle.__init__(self, initial_qpos, obs_type, object_size, target_size, robot_configuration,
-                                        viewpoint, num_distractors, reward_type, task, width, height, target_in_the_air,
-                                        block_gripper)
+
+        fetch_env.FetchEnv.__init__(
+            self, MODEL_XML_PATH, has_object=True, block_gripper=block_gripper, n_substeps=20,
+            gripper_extra_height=0.2, target_in_the_air=target_in_the_air, target_offset=0.0,
+            obj_range=0.15, target_range=0.15, distance_threshold=self.target_size + self.object_size,
+            initial_qpos=initial_qpos, reward_type=reward_type, obs_type=obs_type, render_size=0)
+        gym_utils.EzPickle.__init__(self, initial_qpos, obs_type, object_size, target_size, robot_configuration,
+                                    viewpoint, num_distractors, reward_type, task, width, height, target_in_the_air,
+                                    block_gripper)
+        os.remove(MODEL_XML_PATH)
 
     def _reset_sim(self):
         super()._reset_sim()
