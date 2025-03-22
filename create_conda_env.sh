@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CONDA_ENV_NAME=$(head -1 ./conda_env.yml | cut -f2 -d' ')
+CONDA_ENV_NAME=$(head -1 ./environment.yml | cut -f2 -d' ')
 MUJOCO_PATH="$HOME/.mujoco/mujoco210"
 MUJOCO_LD_PATHS=("$HOME/.mujoco/mujoco210/bin" "/usr/lib/nvidia")
 
@@ -55,7 +55,7 @@ conda remove -y -n "${CONDA_ENV_NAME}" --all
 rm -rf ./src/fetch-block-construction
 
 # Create environment from YAML.
-conda env create -f ./conda_env.yml
+conda env create -f ./environment.yml
 if [ $? -ne 0 ]; then
     echo "Failed to create $CONDA_ENV_NAME conda environment."
     exit 1
